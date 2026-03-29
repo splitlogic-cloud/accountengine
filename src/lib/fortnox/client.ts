@@ -1,3 +1,5 @@
+import 'server-only'
+
 const FORTNOX_BASE = 'https://api.fortnox.se/3'
 const FORTNOX_AUTH = 'https://apps.fortnox.se/oauth-v1'
 
@@ -44,7 +46,23 @@ export async function refreshFortnoxToken(refreshToken: string) {
   return res.json()
 }
 
-// Generisk Fortnox API-anrop med automatisk token refresh
+export class FortnoxTokenExpiredError extends Error {
+  constructor() { super('Fortnox token expired') }
+}
+export class FortnoxTokenInvalidError extends Error {
+  constructor() { super('Fortnox token invalid — reconnect required') }
+}
+export class FortnoxRateLimitError extends Error {
+  retryAfter: number
+  constructor(retryAfter = 60) {
+    super(`Fortnox rate limit — retry after ${retryAfter}s`)
+    this.retryAfter = retryAfter
+  }
+}
+export class FortnoxUnavailableError extends Error {
+  constructor() { super('Fortnox API unavailable') }
+}
+
 export async function fortnoxRequest<T>(
   endpoint: string,
   accessToken: string,
@@ -60,8 +78,27 @@ export async function fortnoxRequest<T>(
     },
   })
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Fortnox API ${endpoint}: ${res.status} ${err}`)
+    switch (res.status) {
+      case 401: {
+        const body = (await res.json().catch(() => ({}))) as {
+          ErrorInformation?: { message?: string }
+        }
+        const msg = body.ErrorInformation?.message ?? ''
+        if (msg.toLowerCase().includes('expired')) throw new FortnoxTokenExpiredError()
+        throw new FortnoxTokenInvalidError()
+      }
+      case 429: {
+        const retryAfter = parseInt(res.headers.get('Retry-After') ?? '60')
+        throw new FortnoxRateLimitError(retryAfter)
+      }
+      case 503:
+      case 502:
+        throw new FortnoxUnavailableError()
+      default: {
+        const body = await res.text()
+        throw new Error(`Fortnox API ${endpoint}: HTTP ${res.status} — ${body}`)
+      }
+    }
   }
   return res.json()
 }

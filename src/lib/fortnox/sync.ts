@@ -47,9 +47,9 @@ export async function syncCompany(company: Company): Promise<{
     )
 
     const vouchers = data?.Vouchers?.Voucher ?? []
-    const transactions = vouchers.map(v =>
-      normalizeFortnoxVoucher(v, company)
-    ).filter(Boolean) as Transaction[]
+    const transactions = vouchers
+      .map((v) => normalizeFortnoxVoucher(v, company))
+      .filter((row): row is NonNullable<typeof row> => row != null)
 
     if (transactions.length > 0) {
       // Upsert — inga duplikat
@@ -114,7 +114,16 @@ function normalizeFortnoxVoucher(
     tax_treatment:      'unknown',
     vat_rate:           null,
     posting_status:     'pending',
+    pipeline_stage:     'imported',
     rule_id:            null,
+    ai_confidence:      null,
+    ai_reasoning:       null,
+    ai_model:           null,
+    ai_classified_at:   null,
+    source_checksum:    null,
+    fingerprint:        null,
+    version:            1,
+    last_seen_at:       null,
     raw_data:           voucher as unknown as Record<string, unknown>,
   }
 }
