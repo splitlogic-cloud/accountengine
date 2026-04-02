@@ -2,7 +2,6 @@ import { inngest } from '../client'
 import { createServiceClient } from '@/lib/supabase/server'
 import { saveTransactions } from '@/lib/connectors/save'
 import { writeAuditLog, AuditActions } from '@/lib/audit'
-import { fortnoxRequest, refreshFortnoxToken, FortnoxTokenExpiredError, FortnoxRateLimitError } from '@/lib/fortnox/client'
 import { decrypt, encrypt } from '@/lib/crypto'
 
 export const syncCompanyFn = inngest.createFunction(
@@ -19,6 +18,19 @@ export const syncCompanyFn = inngest.createFunction(
       company_id: string; bureau_id: string; triggered_by: string
     }
 
+    // Temporärt: Fortnox-synken är avstängd som default.
+    // Sätt `FORTNOX_SYNC_ENABLED=true` för att slå på igen.
+    if (process.env.FORTNOX_SYNC_ENABLED !== 'true') {
+      const supabase = createServiceClient()
+      await supabase.from('companies').update({
+        sync_status: 'idle',
+        sync_error: null,
+      }).eq('id', company_id)
+
+      logger.info('Fortnox sync skipped (FORTNOX_SYNC_ENABLED != true)')
+      return { success: true, imported: 0, errors: [] as string[] }
+    }
+
     const company = await step.run('fetch-company', async () => {
       const supabase = createServiceClient()
       const { data, error } = await supabase
@@ -28,6 +40,13 @@ export const syncCompanyFn = inngest.createFunction(
     })
 
     const transactions = await step.run('fortnox-sync', async () => {
+      const {
+        fortnoxRequest,
+        refreshFortnoxToken,
+        FortnoxTokenExpiredError,
+        FortnoxRateLimitError,
+      } = await import('@/lib/fortnox/client')
+
       let accessToken = decrypt(company.fortnox_access_token!)
 
       // Refresh token if expiring within 5 minutes
@@ -53,21 +72,20 @@ export const syncCompanyFn = inngest.createFunction(
       fromDate.setDate(fromDate.getDate() - 90)
       const fromStr = fromDate.toISOString().split('T')[0]
 
-      const data = await fortnoxRequest<{ Vouchers?: { Voucher?: FortnoxVoucherLite[] } }>(
+      const data = await fortnoxRequest<{ Vouchers?: { Voucher?: any[] } }>(
         `/vouchers?fromdate=${fromStr}`,
         accessToken
       )
 
       const vouchers = data?.Vouchers?.Voucher ?? []
-      return vouchers.map((v) => ({
+      return vouchers.map((v: any) => ({
         company_id,
         bureau_id,
         source: 'fortnox',
         external_id: `${v.Series}-${v.VoucherNumber}`,
         external_ref: v.ReferenceNumber ?? null,
         transaction_type: 'manual' as const,
-        amount:
-          v.VoucherRows?.reduce((s, r) => s + (parseFloat(r.Debit ?? '') || 0), 0) ?? 0,
+        amount: v.VoucherRows?.reduce((s: number, r: any) => s + (parseFloat(r.Debit) || 0), 0) ?? 0,
         currency: 'SEK',
         transaction_date: v.TransactionDate,
         description: v.Description ?? null,
@@ -106,15 +124,6 @@ export const syncCompanyFn = inngest.createFunction(
     return { success: true, ...result }
   }
 )
-
-interface FortnoxVoucherLite {
-  Series: string
-  VoucherNumber: string
-  TransactionDate: string
-  Description?: string
-  ReferenceNumber?: string
-  VoucherRows?: Array<{ Debit?: string; Credit?: string }>
-}
 
 export async function triggerCompanySync(
   company_id: string, bureau_id: string, triggered_by: string

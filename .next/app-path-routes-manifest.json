@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/auth/callback/route": "/auth/callback",
+  "/api/inngest/route": "/api/inngest",
+  "/(onboarding)/setup/page": "/setup",
+  "/page": "/",
+  "/(auth)/login/page": "/login",
+  "/(bureau)/command/page": "/command"
+}

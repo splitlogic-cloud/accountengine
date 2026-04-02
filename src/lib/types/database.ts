@@ -1,13 +1,25 @@
 export type UserRole = 'system_admin' | 'admin' | 'accountant' | 'reader'
 export type CompanyStatus = 'active' | 'inactive' | 'error' | 'pending'
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error'
-export type TransactionType = 'charge' | 'refund' | 'payout' | 'fee' | 'transfer' | 'bank_debit' | 'bank_credit' | 'manual' | 'supplier_invoice'
-export type TaxTreatment = 'domestic_vat' | 'eu_oss' | 'export_outside_eu' | 'eu_b2b_reverse_charge' | 'outside_scope' | 'unknown'
+export type TransactionType =
+  | 'charge' | 'refund' | 'payout' | 'fee' | 'transfer'
+  | 'bank_debit' | 'bank_credit' | 'manual' | 'supplier_invoice'
+  | 'stripe_charge' | 'stripe_refund' | 'stripe_payout' | 'stripe_fee'
+  | 'shopify_order' | 'paypal_payment'
+export type TaxTreatment =
+  | 'domestic_vat' | 'eu_oss' | 'export_outside_eu'
+  | 'eu_b2b_reverse_charge' | 'outside_scope' | 'unknown'
 export type PostingStatus = 'pending' | 'queued' | 'posted' | 'rejected' | 'skipped'
 export type RuleAction = 'auto_post' | 'queue' | 'skip'
 export type RuleScope = 'bureau' | 'company'
-export type ConditionOperator = 'equals' | 'contains' | 'starts_with' | 'ends_with' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in'
-export type ConditionField = 'counterpart_name' | 'counterpart_org' | 'transaction_type' | 'amount' | 'description' | 'customer_country' | 'tax_treatment' | 'source'
+export type ConditionOperator =
+  | 'equals' | 'contains' | 'starts_with' | 'ends_with'
+  | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in'
+export type ConditionField =
+  | 'counterpart_name' | 'counterpart_org' | 'transaction_type'
+  | 'amount' | 'description' | 'customer_country' | 'tax_treatment' | 'source'
+export type PipelineStage =
+  | 'imported' | 'rules_applied' | 'ai_classified' | 'queued' | 'posted' | 'rejected'
 
 export interface Bureau {
   id: string
@@ -69,7 +81,16 @@ export interface Transaction {
   tax_treatment: TaxTreatment
   vat_rate: number | null
   posting_status: PostingStatus
+  pipeline_stage: PipelineStage
   rule_id: string | null
+  ai_confidence: number | null
+  ai_reasoning: string | null
+  ai_model: string | null
+  ai_classified_at: string | null
+  source_checksum: string | null
+  fingerprint: string | null
+  version: number
+  last_seen_at: string | null
   raw_data: Record<string, unknown> | null
   created_at: string
   updated_at: string
@@ -91,7 +112,6 @@ export interface Rule {
   created_at: string
   updated_at: string
   created_by: string | null
-  // joined
   conditions?: RuleCondition[]
 }
 
@@ -108,13 +128,29 @@ export interface RuleCondition {
 export interface JournalLineTemplate {
   side: 'debit' | 'credit'
   account: string
-  percent: number   // 0-100, andel av transaktionsbeloppet
+  percent: number
   description?: string
 }
 
-// Utökade typer med joins
+export interface ConnectorConfig {
+  id: string
+  company_id: string
+  bureau_id: string
+  connector: 'stripe' | 'shopify' | 'paypal' | 'bank_file' | 'fortnox'
+  is_active: boolean
+  credentials: string
+  key_version: number
+  last_synced_at: string | null
+  last_sync_error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StripeCredentials { secret_key: string; webhook_secret?: string }
+export interface ShopifyCredentials { shop: string; access_token: string }
+export interface PayPalCredentials { client_id: string; client_secret: string; environment: 'sandbox' | 'live' }
+
 export interface CompanyWithStats extends Company {
   pending_count?: number
   queued_count?: number
-  last_transaction_date?: string
 }

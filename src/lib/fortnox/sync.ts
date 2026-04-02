@@ -2,6 +2,8 @@ import { fortnoxRequest, refreshFortnoxToken } from './client'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Company, Transaction } from '@/lib/types/database'
 
+type TransactionInsert = Omit<Transaction, 'id' | 'created_at' | 'updated_at'>
+
 export async function syncCompany(company: Company): Promise<{
   imported: number
   errors: string[]
@@ -48,8 +50,8 @@ export async function syncCompany(company: Company): Promise<{
 
     const vouchers = data?.Vouchers?.Voucher ?? []
     const transactions = vouchers
-      .map((v) => normalizeFortnoxVoucher(v, company))
-      .filter((row): row is NonNullable<typeof row> => row != null)
+      .map(v => normalizeFortnoxVoucher(v, company))
+      .filter((row): row is NonNullable<typeof row> => row !== null)
 
     if (transactions.length > 0) {
       // Upsert — inga duplikat
@@ -92,10 +94,12 @@ export async function syncCompany(company: Company): Promise<{
 function normalizeFortnoxVoucher(
   voucher: FortnoxVoucher,
   company: Company
-): Omit<Transaction, 'id' | 'created_at' | 'updated_at'> | null {
+): TransactionInsert | null {
   const totalDebit = voucher.VoucherRows?.reduce(
     (sum, row) => sum + (parseFloat(row.Debit) || 0), 0
   ) ?? 0
+
+  const now = new Date().toISOString()
 
   return {
     company_id:         company.id,
@@ -123,7 +127,7 @@ function normalizeFortnoxVoucher(
     source_checksum:    null,
     fingerprint:        null,
     version:            1,
-    last_seen_at:       null,
+    last_seen_at:       now,
     raw_data:           voucher as unknown as Record<string, unknown>,
   }
 }
