@@ -53,25 +53,26 @@ export default function LoginPage() {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    const registerRes = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     })
+    const registerData = await registerRes.json()
+    if (!registerRes.ok) {
+      setLoading(false)
+      setError(registerData.error ?? 'Kunde inte skapa konto')
+      return
+    }
 
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(error.message || 'Konto skapat men kunde inte logga in')
       return
     }
 
-    // If email confirmation is disabled in Supabase, user gets a session directly.
-    if (data.session) {
-      router.push('/setup')
-      return
-    }
-
-    setStep('sent')
+    router.push('/setup')
   }
 
   if (step === 'sent') {
