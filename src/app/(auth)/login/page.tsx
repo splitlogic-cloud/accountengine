@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-type Mode = 'magic_link' | 'password'
+type Mode = 'magic_link' | 'password' | 'signup'
 type Step = 'input' | 'sent'
 
 export default function LoginPage() {
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('input')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -35,6 +36,42 @@ export default function LoginPage() {
     setLoading(false)
     if (error) { setError('Fel e-post eller lösenord'); return }
     router.push('/command')
+  }
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true); setError(null)
+
+    if (password.length < 8) {
+      setLoading(false)
+      setError('Lösenordet måste vara minst 8 tecken')
+      return
+    }
+    if (password !== confirmPassword) {
+      setLoading(false)
+      setError('Lösenorden matchar inte')
+      return
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
+
+    setLoading(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+
+    // If email confirmation is disabled in Supabase, user gets a session directly.
+    if (data.session) {
+      router.push('/setup')
+      return
+    }
+
+    setStep('sent')
   }
 
   if (step === 'sent') {
@@ -77,18 +114,27 @@ export default function LoginPage() {
 
         <div className="p-8">
           <div className="flex bg-[#f5f2ec] rounded-lg p-1 mb-6">
-            {(['magic_link', 'password'] as Mode[]).map((m) => (
+            {(['magic_link', 'password', 'signup'] as Mode[]).map((m) => (
               <button key={m}
                 onClick={() => { setMode(m); setError(null) }}
                 className={`flex-1 h-8 rounded-md text-sm font-medium transition-all ${
                   mode === m ? 'bg-white text-[#1a1814] shadow-sm' : 'text-[#7a7570] hover:text-[#4a463f]'
                 }`}>
-                {m === 'magic_link' ? 'Magic Link' : 'Lösenord'}
+                {m === 'magic_link' ? 'Magic Link' : m === 'password' ? 'Lösenord' : 'Skapa konto'}
               </button>
             ))}
           </div>
 
-          <form onSubmit={mode === 'magic_link' ? handleMagicLink : handlePassword} className="space-y-4">
+          <form
+            onSubmit={
+              mode === 'magic_link'
+                ? handleMagicLink
+                : mode === 'password'
+                  ? handlePassword
+                  : handleSignup
+            }
+            className="space-y-4"
+          >
             <div>
               <label className="block text-xs font-semibold text-[#7a7570] uppercase tracking-wider mb-1.5">
                 E-postadress
@@ -122,6 +168,30 @@ export default function LoginPage() {
                 />
               </div>
             )}
+            {mode === 'signup' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7a7570] uppercase tracking-wider mb-1.5">
+                    Lösenord
+                  </label>
+                  <input type="password" required minLength={8}
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="Minst 8 tecken"
+                    className="w-full h-11 px-3.5 border border-[#cdc8be] rounded-xl text-sm outline-none transition-colors focus:border-[#3d9467] focus:ring-2 focus:ring-[#3d9467]/10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7a7570] uppercase tracking-wider mb-1.5">
+                    Bekräfta lösenord
+                  </label>
+                  <input type="password" required minLength={8}
+                    value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Upprepa lösenord"
+                    className="w-full h-11 px-3.5 border border-[#cdc8be] rounded-xl text-sm outline-none transition-colors focus:border-[#3d9467] focus:ring-2 focus:ring-[#3d9467]/10"
+                  />
+                </div>
+              </>
+            )}
             {error && (
               <div className="bg-[#fdf0f0] border border-[#f0b8b8] rounded-xl px-4 py-3 text-sm text-[#8b1a1a]">
                 {error}
@@ -129,7 +199,13 @@ export default function LoginPage() {
             )}
             <button type="submit" disabled={loading}
               className="w-full h-11 bg-[#1e5235] hover:bg-[#1a3d28] text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50">
-              {loading ? 'Skickar...' : mode === 'magic_link' ? 'Skicka inloggningslänk' : 'Logga in'}
+              {loading
+                ? 'Skickar...'
+                : mode === 'magic_link'
+                  ? 'Skicka inloggningslänk'
+                  : mode === 'password'
+                    ? 'Logga in'
+                    : 'Skapa konto'}
             </button>
           </form>
 
