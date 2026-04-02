@@ -1,1 +1,11 @@
 node_modules
+.next/
+out/
+dist/
+
+# Env files
+.env.local
+.env.*.local
+
+# Avoid committing build artifacts / caches
+.DS_Store
