@@ -18,8 +18,6 @@ function LoginForm() {
 
   const supabase = createClient()
 
-  const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/callback` : ''
-
   useEffect(() => {
     const err = searchParams.get('error')
     if (err) {
@@ -33,9 +31,11 @@ function LoginForm() {
     setMessage(null)
 
     if (mode === 'magic') {
+      const redirectTo =
+        typeof window !== 'undefined' ? `${window.location.origin}/callback` : ''
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: callbackUrl },
+        options: { emailRedirectTo: redirectTo },
       })
       if (error) {
         setMessage({ text: error.message, type: 'err' })
@@ -69,28 +69,31 @@ function LoginForm() {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: callbackUrl },
+    const res = await fetch('/api/auth/signup', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password }),
     })
+    const json = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean }
 
-    if (error) {
-      setMessage({ text: error.message, type: 'err' })
+    if (!res.ok || json.error) {
+      setMessage({ text: json.error ?? 'Kunde inte skapa konto.', type: 'err' })
       setLoading(false)
       return
     }
 
-    if (data.session) {
-      window.location.href = '/dashboard'
+    const { error: signErr } = await supabase.auth.signInWithPassword({ email, password })
+    if (signErr) {
+      setMessage({
+        text:
+          'Kontot skapades men inloggning misslyckades. Prova logga in med lösenord.',
+        type: 'err',
+      })
+      setLoading(false)
       return
     }
 
-    setMessage({
-      text: 'Kolla din e-post och bekräfta kontot innan du loggar in (om bekräftelse krävs i Supabase).',
-      type: 'ok',
-    })
-    setLoading(false)
+    window.location.href = '/dashboard'
   }
 
   return (
@@ -103,7 +106,7 @@ function LoginForm() {
           ? mode === 'magic'
             ? 'Vi skickar en länk till din e-post.'
             : 'E-post och lösenord.'
-          : 'E-post, lösenord och bekräftelse.'}
+          : 'E-post och lösenord — du loggas in direkt.'}
       </p>
 
       <div className="flex rounded-lg border border-[#e2e8f0] p-0.5 mb-6">
