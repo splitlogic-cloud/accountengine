@@ -1,5 +1,5 @@
-import { createUserClient }  from '@/lib/supabase/server'
-import { redirect }          from 'next/navigation'
+import { redirect }         from 'next/navigation'
+import { createUserClient } from '@/lib/supabase/server'
 import Link                  from 'next/link'
 
 export default async function DashboardPage() {
@@ -7,38 +7,39 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Fetch profile to get bureau_id
   const { data: profile } = await supabase
     .from('profiles')
-    .select('bureau_id')
+    .select('bureau_id, full_name')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.bureau_id) {
-    // No bureau yet — show onboarding
-    return <OnboardingPrompt />
+  if (!profile?.bureau_id) redirect('/onboarding')
+
+  // Fetch all companies this user has access to
+  const { data: members } = await supabase
+    .from('company_members')
+    .select('company_id, role, companies(id, name, org_number, status)')
+    .eq('user_id', user.id)
+    .not('accepted_at', 'is', null)
+
+  const companies = (members ?? [])
+    .map((m: any) => m.companies)
+    .filter(Boolean)
+
+  // Solo user with exactly one company — go straight there
+  if (companies.length === 1) {
+    redirect(`/${companies[0].id}/voucher`)
   }
 
-  // Fetch companies for this bureau
-  const { data: clients } = await supabase
-    .from('bureau_clients')
-    .select(`
-      company_id,
-      assigned_to,
-      companies (
-        id, name, status, updated_at
-      )
-    `)
-    .eq('bureau_id', profile.bureau_id)
-    .order('created_at', { ascending: false })
-    .limit(10)
+  // No companies yet
+  if (companies.length === 0) {
+    redirect('/onboarding')
+  }
 
-  const companies = (clients ?? []).map(c => c.companies).filter(Boolean)
-
+  // Bureau user with multiple companies — show list
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-[17px] font-bold tracking-tight">Översikt</h1>
           <p className="text-[12.5px] text-[#64748b] mt-0.5">
@@ -47,75 +48,32 @@ export default async function DashboardPage() {
         </div>
         <Link
           href="/clients/new"
-          className="h-8 px-3.5 bg-[#1a7a3c] text-white text-[12.5px] font-semibold rounded-[7px] flex items-center gap-1.5 hover:bg-[#155c2d] transition-colors"
+          className="h-8 px-3.5 bg-[#1a7a3c] text-white text-[12.5px] font-semibold rounded-[7px] hover:bg-[#155c2d] transition-colors flex items-center gap-1.5"
         >
-          <span>+</span> Ny klient
+          + Nytt bolag
         </Link>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Klienter',     value: companies.length, sub: 'aktiva bolag',     color: '' },
-          { label: 'Events idag',  value: '—',              sub: 'synka för att se', color: '' },
-          { label: 'Blockerade',   value: '—',              sub: 'events (auto)',    color: 'text-[#d97706]' },
-          { label: 'Manuella ver.', value: '—',             sub: 'denna månad',      color: 'text-[#1a7a3c]' },
-        ].map(k => (
-          <div key={k.label} className="bg-white border border-[#e2e8f0] rounded-[10px] p-4 shadow-sm">
-            <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#94a3b8] mb-2">{k.label}</div>
-            <div className={`text-[26px] font-bold tracking-tight leading-none mb-1 ${k.color}`}>{k.value}</div>
-            <div className="text-[11.5px] text-[#64748b]">{k.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Clients list */}
       <div className="bg-white border border-[#e2e8f0] rounded-[10px] shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 bg-[#f8fafc] border-b border-[#e2e8f0] flex items-center justify-between">
-          <span className="text-[12.5px] font-bold">Klienter</span>
-          <Link href="/clients" className="text-[12px] text-[#64748b] hover:text-[#0f172a]">Visa alla →</Link>
+          <span className="text-[12.5px] font-bold">Bolag ({companies.length})</span>
         </div>
-        {companies.length === 0 ? (
-          <div className="px-4 py-10 text-center text-[13px] text-[#64748b]">
-            Inga klienter ännu.{' '}
-            <Link href="/clients/new" className="text-[#1a7a3c] font-semibold hover:underline">Lägg till den första →</Link>
-          </div>
-        ) : (
-          companies.map((co: any) => (
-            <Link
-              key={co.id}
-              href={`/company/${co.id}`}
-              className="flex items-center gap-3 px-4 py-3 border-b border-[#e2e8f0] last:border-b-0 hover:bg-[#f8fafc] transition-colors"
-            >
-              <div className="w-8 h-8 rounded-[7px] bg-[#f1f5f9] border border-[#e2e8f0] flex items-center justify-center text-[11px] font-bold text-[#64748b] shrink-0">
-                {co.name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13.5px] font-semibold truncate">{co.name}</div>
-                <div className="text-[12px] text-[#64748b]">{co.status}</div>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
-            </Link>
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
-
-function OnboardingPrompt() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center max-w-sm">
-        <div className="text-[32px] mb-3">🏢</div>
-        <h2 className="text-[17px] font-bold mb-2">Skapa din byrå</h2>
-        <p className="text-[13px] text-[#64748b] mb-5">Du behöver skapa en byrå för att komma igång med AccountEngine.</p>
-        <Link
-          href="/onboarding"
-          className="inline-flex h-9 px-5 bg-[#1a7a3c] text-white text-[13px] font-semibold rounded-[7px] items-center hover:bg-[#155c2d] transition-colors"
-        >
-          Kom igång →
-        </Link>
+        {companies.map((co: any) => (
+          <Link
+            key={co.id}
+            href={`/${co.id}/voucher`}
+            className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e2e8f0] last:border-b-0 hover:bg-[#f8fafc] transition-colors"
+          >
+            <div className="w-9 h-9 rounded-[8px] bg-[#f1f5f9] border border-[#e2e8f0] flex items-center justify-center text-[11px] font-bold text-[#64748b] shrink-0">
+              {co.name.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13.5px] font-semibold text-[#0f172a] truncate">{co.name}</div>
+              <div className="text-[12px] text-[#64748b]">{co.org_number ?? 'Org.nr saknas'}</div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#94a3b8" strokeWidth="1.6"><path d="M6 3l5 5-5 5"/></svg>
+          </Link>
+        ))}
       </div>
     </div>
   )

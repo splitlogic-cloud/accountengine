@@ -1,91 +1,228 @@
 'use client'
 
-import { useState }         from 'react'
-import { createClient }     from '@/lib/supabase/client'
-import { useRouter }        from 'next/navigation'
+import { useState }     from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter }    from 'next/navigation'
+
+type Mode = 'choose' | 'bureau' | 'solo'
 
 export default function OnboardingPage() {
   const router   = useRouter()
   const supabase = createClient()
-  const [step,   setStep]    = useState<1 | 2>(1)
+
+  const [mode,    setMode]    = useState<Mode>('choose')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
-  const [bureauName,   setBureauName]   = useState('')
-  const [bureauOrg,    setBureauOrg]    = useState('')
-  const [companyName,  setCompanyName]  = useState('')
-  const [companyOrg,   setCompanyOrg]   = useState('')
+  // Bureau fields
+  const [bureauName, setBureauName] = useState('')
+  const [bureauOrg,  setBureauOrg]  = useState('')
+  const [coName,     setCoName]     = useState('')
+  const [coOrg,      setCoOrg]      = useState('')
 
-  async function handleBureau(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  // Solo fields
+  const [soloName, setSoloName] = useState('')
+  const [soloOrg,  setSoloOrg]  = useState('')
 
+  async function getUser() {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Inte inloggad.'); setLoading(false); return }
-
-    // Create bureau
-    const { data: bureau, error: bErr } = await supabase
-      .from('bureaus')
-      .insert({ name: bureauName.trim(), org_number: bureauOrg.trim() || null })
-      .select('id')
-      .single()
-
-    if (bErr || !bureau) { setError(bErr?.message ?? 'Kunde inte skapa byrå.'); setLoading(false); return }
-
-    // Link user to bureau
-    await supabase
-      .from('profiles')
-      .update({ bureau_id: bureau.id })
-      .eq('id', user.id)
-
-    setStep(2)
-    setLoading(false)
+    if (!user) throw new Error('Inte inloggad.')
+    return user
   }
 
-  async function handleCompany(e: React.FormEvent) {
+  async function createBureauAndCompany(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Inte inloggad.'); setLoading(false); return }
+    try {
+      const user = await getUser()
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('bureau_id')
-      .eq('id', user.id)
-      .single()
+      // Create bureau — use service API route to bypass RLS
+      const bureauRes = await fetch('/api/onboarding', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          type:        'bureau',
+          bureau_name: bureauName.trim(),
+          bureau_org:  bureauOrg.trim() || null,
+          co_name:     coName.trim() || null,
+          co_org:      coOrg.trim() || null,
+        }),
+      })
 
-    if (!profile?.bureau_id) { setError('Byrå saknas.'); setLoading(false); return }
+      const json = await bureauRes.json()
+      if (!bureauRes.ok) throw new Error(json.error ?? 'Kunde inte skapa byrå.')
 
-    // Create company via server action (which also seeds BAS)
-    const res = await fetch('/api/companies', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        bureau_id:  profile.bureau_id,
-        name:       companyName.trim(),
-        org_number: companyOrg.trim(),
-      }),
-    })
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}))
-      setError(json.error ?? 'Kunde inte skapa bolag.')
+      if (json.company_id) {
+        router.push(`/${json.company_id}/voucher`)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Okänt fel')
       setLoading(false)
-      return
     }
-
-    const { company_id } = await res.json()
-    router.push(`/company/${company_id}/voucher`)
   }
+
+  async function createSoloCompany(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      await getUser()
+
+      const res = await fetch('/api/onboarding', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          type:    'solo',
+          co_name: soloName.trim(),
+          co_org:  soloOrg.trim() || null,
+        }),
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Kunde inte skapa bolag.')
+
+      router.push(`/${json.company_id}/voucher`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Okänt fel')
+      setLoading(false)
+    }
+  }
+
+  // ── Shared UI helpers ──────────────────────────────────────────────────
+
+  const Field = ({
+    label, value, onChange, placeholder, required = false,
+  }: {
+    label: string; value: string; onChange: (v: string) => void
+    placeholder?: string; required?: boolean
+  }) => (
+    <div>
+      <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-1.5">
+        {label}{required && ' *'}
+      </label>
+      <input
+        required={required}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full h-[36px] px-3 border border-[#e2e8f0] rounded-[7px] text-[13.5px] outline-none focus:border-[#1a7a3c] focus:ring-2 focus:ring-[#1a7a3c]/10 transition-all"
+      />
+    </div>
+  )
+
+  // ── Choose mode ────────────────────────────────────────────────────────
+
+  if (mode === 'choose') {
+    return (
+      <Wrapper step={0}>
+        <h1 className="text-[18px] font-bold mb-1">Välkommen till AccountEngine</h1>
+        <p className="text-[13px] text-[#64748b] mb-6">Hur vill du använda systemet?</p>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => setMode('bureau')}
+            className="flex items-start gap-4 p-4 border-2 border-[#e2e8f0] rounded-[10px] hover:border-[#1a7a3c] hover:bg-[#e8f5ee] transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#e8f5ee] rounded-[8px] flex items-center justify-center text-xl shrink-0">🏢</div>
+            <div>
+              <div className="text-[14px] font-bold text-[#0f172a] mb-0.5">Bokföringsbyrå</div>
+              <div className="text-[12.5px] text-[#64748b]">Jag sköter bokföring för flera bolag. JoJo Business Management AB är ett exempel.</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setMode('solo')}
+            className="flex items-start gap-4 p-4 border-2 border-[#e2e8f0] rounded-[10px] hover:border-[#1a7a3c] hover:bg-[#e8f5ee] transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#e8f5ee] rounded-[8px] flex items-center justify-center text-xl shrink-0">👤</div>
+            <div>
+              <div className="text-[14px] font-bold text-[#0f172a] mb-0.5">Eget bolag</div>
+              <div className="text-[12.5px] text-[#64748b]">Jag bokför bara för mitt eget bolag. Kom direkt in i systemet.</div>
+            </div>
+          </button>
+        </div>
+      </Wrapper>
+    )
+  }
+
+  // ── Bureau mode ────────────────────────────────────────────────────────
+
+  if (mode === 'bureau') {
+    return (
+      <Wrapper step={1} onBack={() => setMode('choose')}>
+        <h1 className="text-[18px] font-bold mb-1">Din byrå</h1>
+        <p className="text-[13px] text-[#64748b] mb-5">Du kan lägga till fler bolag senare.</p>
+
+        {error && <ErrorMsg msg={error} />}
+
+        <form onSubmit={createBureauAndCompany} className="flex flex-col gap-3">
+          <Field label="Byrånamn"           value={bureauName} onChange={setBureauName} placeholder="JoJo Business Management AB" required />
+          <Field label="Org.nr (valfritt)"  value={bureauOrg}  onChange={setBureauOrg}  placeholder="556123-4567" />
+
+          <div className="h-px bg-[#e2e8f0] my-1" />
+          <p className="text-[12px] text-[#64748b]">Första klientbolaget (valfritt, kan läggas till senare):</p>
+
+          <Field label="Bolagsnamn"         value={coName} onChange={setCoName} placeholder="Lyra Music AB" />
+          <Field label="Org.nr (valfritt)"  value={coOrg}  onChange={setCoOrg}  placeholder="556999-0001" />
+
+          <button
+            type="submit"
+            disabled={loading || !bureauName.trim()}
+            className="h-[38px] bg-[#1a7a3c] text-white text-[13.5px] font-semibold rounded-[7px] hover:bg-[#155c2d] transition-colors disabled:opacity-50 mt-1"
+          >
+            {loading ? 'Skapar...' : 'Skapa byrå →'}
+          </button>
+        </form>
+      </Wrapper>
+    )
+  }
+
+  // ── Solo mode ──────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+    <Wrapper step={1} onBack={() => setMode('choose')}>
+      <h1 className="text-[18px] font-bold mb-1">Ditt bolag</h1>
+      <p className="text-[13px] text-[#64748b] mb-5">BAS 2024-kontoplan seedas automatiskt.</p>
+
+      {error && <ErrorMsg msg={error} />}
+
+      <form onSubmit={createSoloCompany} className="flex flex-col gap-3">
+        <Field label="Bolagsnamn"          value={soloName} onChange={setSoloName} placeholder="Mitt AB" required />
+        <Field label="Org.nr (valfritt)"   value={soloOrg}  onChange={setSoloOrg}  placeholder="556123-4567" />
+
+        <div className="bg-[#e8f5ee] border border-[#b8ddc9] rounded-[7px] px-3 py-2.5 text-[12.5px] text-[#155c2d]">
+          ✓ Du kommer direkt in i bokföringsvyn efter skapande.
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !soloName.trim()}
+          className="h-[38px] bg-[#1a7a3c] text-white text-[13.5px] font-semibold rounded-[7px] hover:bg-[#155c2d] transition-colors disabled:opacity-50 mt-1"
+        >
+          {loading ? 'Skapar...' : 'Kom igång →'}
+        </button>
+      </form>
+    </Wrapper>
+  )
+}
+
+// ── Shared components ──────────────────────────────────────────────────────
+
+function Wrapper({
+  children, step, onBack,
+}: {
+  children: React.ReactNode; step: number; onBack?: () => void
+}) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-6">
           <div className="w-8 h-8 bg-[#1a7a3c] rounded-lg flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
               <rect x="1" y="1" width="5.5" height="5.5" rx="1.2" fill="white"/>
@@ -97,100 +234,40 @@ export default function OnboardingPage() {
           <span className="text-[15px] font-bold tracking-tight">AccountEngine</span>
         </div>
 
-        {/* Steps indicator */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-[#1a7a3c]' : 'bg-[#e2e8f0]'}`} />
-          <div className="w-8 h-px bg-[#e2e8f0]" />
-          <div className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-[#1a7a3c]' : 'bg-[#e2e8f0]'}`} />
+        {/* Step dots */}
+        <div className="flex items-center justify-center gap-2 mb-5">
+          {[0, 1].map(i => (
+            <div key={i} className={`rounded-full transition-all ${
+              i === step
+                ? 'w-6 h-2 bg-[#1a7a3c]'
+                : i < step
+                ? 'w-2 h-2 bg-[#1a7a3c]'
+                : 'w-2 h-2 bg-[#e2e8f0]'
+            }`} />
+          ))}
         </div>
 
-        <div className="bg-white border border-[#e2e8f0] rounded-xl p-8 shadow-sm">
-          {step === 1 ? (
-            <>
-              <h1 className="text-[18px] font-bold mb-1">Din byrå</h1>
-              <p className="text-[13px] text-[#64748b] mb-6">Berätta om din bokföringsbyrå eller ditt bolag.</p>
-
-              {error && (
-                <div className="text-[12.5px] font-medium px-3 py-2 rounded-lg mb-4 bg-[#fef2f2] text-[#b91c1c]">{error}</div>
-              )}
-
-              <form onSubmit={handleBureau} className="flex flex-col gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Byrånamn *</label>
-                  <input
-                    required
-                    value={bureauName}
-                    onChange={e => setBureauName(e.target.value)}
-                    placeholder="JoJo Business Management AB"
-                    className="w-full h-[36px] px-3 border border-[#e2e8f0] rounded-lg text-[13.5px] outline-none focus:border-[#1a7a3c] transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Organisationsnummer</label>
-                  <input
-                    value={bureauOrg}
-                    onChange={e => setBureauOrg(e.target.value)}
-                    placeholder="556123-4567"
-                    className="w-full h-[36px] px-3 border border-[#e2e8f0] rounded-lg text-[13.5px] outline-none focus:border-[#1a7a3c] transition-all"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading || !bureauName.trim()}
-                  className="h-[36px] bg-[#1a7a3c] text-white text-[13px] font-semibold rounded-lg hover:bg-[#155c2d] transition-colors disabled:opacity-50 mt-1"
-                >
-                  {loading ? 'Skapar...' : 'Nästa →'}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <h1 className="text-[18px] font-bold mb-1">Första klientbolaget</h1>
-              <p className="text-[13px] text-[#64748b] mb-6">Lägg till ditt första bolag. BAS-kontoplan seedas automatiskt.</p>
-
-              {error && (
-                <div className="text-[12.5px] font-medium px-3 py-2 rounded-lg mb-4 bg-[#fef2f2] text-[#b91c1c]">{error}</div>
-              )}
-
-              <form onSubmit={handleCompany} className="flex flex-col gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Bolagsnamn *</label>
-                  <input
-                    required
-                    value={companyName}
-                    onChange={e => setCompanyName(e.target.value)}
-                    placeholder="Lyra Music AB"
-                    className="w-full h-[36px] px-3 border border-[#e2e8f0] rounded-lg text-[13.5px] outline-none focus:border-[#1a7a3c] transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Organisationsnummer</label>
-                  <input
-                    value={companyOrg}
-                    onChange={e => setCompanyOrg(e.target.value)}
-                    placeholder="556123-4567"
-                    className="w-full h-[36px] px-3 border border-[#e2e8f0] rounded-lg text-[13.5px] outline-none focus:border-[#1a7a3c] transition-all"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading || !companyName.trim()}
-                  className="h-[36px] bg-[#1a7a3c] text-white text-[13px] font-semibold rounded-lg hover:bg-[#155c2d] transition-colors disabled:opacity-50 mt-1"
-                >
-                  {loading ? 'Skapar...' : 'Kom igång →'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push('/dashboard')}
-                  className="text-[12.5px] text-[#64748b] hover:text-[#0f172a] text-center transition-colors"
-                >
-                  Hoppa över — lägg till bolag senare
-                </button>
-              </form>
-            </>
+        <div className="bg-white border border-[#e2e8f0] rounded-xl p-7 shadow-sm">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 text-[12px] text-[#64748b] hover:text-[#0f172a] mb-4 transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M8 10L4 6l4-4"/></svg>
+              Tillbaka
+            </button>
           )}
+          {children}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ErrorMsg({ msg }: { msg: string }) {
+  return (
+    <div className="text-[12.5px] font-medium px-3 py-2.5 rounded-[7px] mb-4 bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+      {msg}
     </div>
   )
 }
