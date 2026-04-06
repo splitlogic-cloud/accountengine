@@ -55,7 +55,7 @@ export default async function ClientsPage() {
           companies.map((co: any) => (
             <Link
               key={co.id}
-              href={`/company/${co.id}/voucher`}
+              href={`/${co.id}/voucher`}
               className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e2e8f0] last:border-b-0 hover:bg-[#f8fafc] transition-colors"
             >
               <div className="w-9 h-9 rounded-[8px] bg-[#f1f5f9] border border-[#e2e8f0] flex items-center justify-center text-[11px] font-bold text-[#64748b] shrink-0">

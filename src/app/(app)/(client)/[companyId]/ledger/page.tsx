@@ -50,7 +50,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
             SIE4-export
           </button>
           <Link
-            href={`/company/${companyId}/voucher`}
+            href={`/${companyId}/voucher`}
             className="h-8 px-3.5 bg-[#1a7a3c] text-white text-[12.5px] font-semibold rounded-[7px] hover:bg-[#155c2d] transition-colors flex items-center gap-1.5"
           >
             + Manuellt verifikat
@@ -72,7 +72,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
           return (
             <Link
               key={f.label}
-              href={`/company/${companyId}/ledger${f.val ? `?source=${f.val}` : f.status ? `?status=${f.status}` : ''}`}
+              href={`/${companyId}/ledger${f.val ? `?source=${f.val}` : f.status ? `?status=${f.status}` : ''}`}
               className={`px-3 py-1.5 rounded-[20px] text-[12px] font-medium border transition-all ${
                 active
                   ? 'bg-white border-[#1a7a3c] text-[#1a7a3c] font-semibold'
@@ -90,7 +90,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
         {entries.length === 0 ? (
           <div className="px-4 py-12 text-center text-[13px] text-[#64748b]">
             Inga verifikat ännu.{' '}
-            <Link href={`/company/${companyId}/voucher`} className="text-[#1a7a3c] font-semibold hover:underline">
+            <Link href={`/${companyId}/voucher`} className="text-[#1a7a3c] font-semibold hover:underline">
               Skapa det första →
             </Link>
           </div>
@@ -99,7 +99,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
             <div key={entry.id} className="border-b border-[#e2e8f0] last:border-b-0">
               {/* Entry header */}
               <Link
-                href={`/company/${companyId}/ledger/${entry.id}`}
+                href={`/${companyId}/ledger/${entry.id}`}
                 className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#f8fafc] transition-colors group"
               >
                 <div className={`w-2 h-2 rounded-full shrink-0 ${
@@ -137,7 +137,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
       {total_pages > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           {parseInt(page) > 1 && (
-            <Link href={`/company/${companyId}/ledger?page=${parseInt(page) - 1}`}
+            <Link href={`/${companyId}/ledger?page=${parseInt(page) - 1}`}
               className="h-8 px-3 border border-[#e2e8f0] bg-white text-[12.5px] rounded-[7px] hover:bg-[#f1f5f9] transition-colors flex items-center">
               ← Föregående
             </Link>
@@ -146,7 +146,7 @@ export default async function LedgerPage({ params, searchParams }: Props) {
             Sida {page} av {total_pages}
           </span>
           {parseInt(page) < total_pages && (
-            <Link href={`/company/${companyId}/ledger?page=${parseInt(page) + 1}`}
+            <Link href={`/${companyId}/ledger?page=${parseInt(page) + 1}`}
               className="h-8 px-3 border border-[#e2e8f0] bg-white text-[12.5px] rounded-[7px] hover:bg-[#f1f5f9] transition-colors flex items-center">
               Nästa →
             </Link>

@@ -21,7 +21,7 @@ export async function saveDraftEntry(
   const result = await createDraftEntry(dto, userId)
   if (!result.ok) throw new Error(result.error.message)
 
-  revalidatePath(`/company/${dto.company_id}/ledger`)
+  revalidatePath(`/${dto.company_id}/ledger`)
 
   return {
     id:                    result.value.id,
@@ -51,8 +51,8 @@ export async function postManualEntry(
   const postResult = await postEntry(entryId, dto.company_id, userId)
   if (!postResult.ok) throw new Error(postResult.error.message)
 
-  revalidatePath(`/company/${dto.company_id}/ledger`)
-  revalidatePath(`/company/${dto.company_id}`)
+  revalidatePath(`/${dto.company_id}/ledger`)
+  revalidatePath(`/${dto.company_id}`)
 
   return {
     entry_id:     entryId,
@@ -81,7 +81,7 @@ export async function reverseJournalEntry(
 
   if (!result.ok) throw new Error(result.error.message)
 
-  revalidatePath(`/company/${companyId}/ledger`)
+  revalidatePath(`/${companyId}/ledger`)
 
   return { entry_number: result.value.entry_number }
 }
@@ -107,7 +107,7 @@ export async function closePeriod(
   })
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/company/${companyId}/ledger`)
+  revalidatePath(`/${companyId}/ledger`)
 }
 
 // ---------------------------------------------------------------------------

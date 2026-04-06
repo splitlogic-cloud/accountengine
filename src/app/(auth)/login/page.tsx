@@ -45,7 +45,13 @@ function LoginForm() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setMessage({ text: error.message === 'Invalid login credentials' ? 'Fel e-post eller lösenord.' : error.message, type: 'err' })
+        setMessage({
+          text:
+            error.message === 'Invalid login credentials'
+              ? 'Fel e-post eller lösenord.'
+              : error.message,
+          type: 'err',
+        })
       } else {
         window.location.href = '/dashboard'
       }

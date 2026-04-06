@@ -162,6 +162,11 @@ async function normalizeBalanceTx(
     case 'adjustment':
     case 'transfer':
     default: {
+      if ((bTx.type as string) === 'dispute') {
+        txType      = 'chargeback'
+        description = `Tvist (chargeback) ${bTx.id}`
+        break
+      }
       txType = 'adjustment'
       break
     }

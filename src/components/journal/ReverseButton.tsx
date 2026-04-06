@@ -24,7 +24,7 @@ export function ReverseButton({ entryId, companyId, entryNumber, userId }: Props
     try {
       const today = new Date().toISOString().split('T')[0]!
       await reverseJournalEntry(entryId, companyId, userId, today, reason)
-      router.push(`/company/${companyId}/ledger`)
+      router.push(`/${companyId}/ledger`)
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Reversering misslyckades')

@@ -5,5 +5,6 @@ import { Inngest } from 'inngest'
 // Single instance shared across all functions.
 // ---------------------------------------------------------------------------
 export const inngest = new Inngest({
-  id: 'accountengine',
+  id:   'accountengine',
+  name: 'AccountEngine',
 })

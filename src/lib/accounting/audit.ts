@@ -3,15 +3,16 @@ import 'server-only'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const AuditAction = {
-  IMPORT_COMPLETED: 'import.completed',
+  IMPORT_COMPLETED: 'import_completed',
 } as const
+
+export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction]
 
 interface AuditParams {
   company_id:   string
-  bureau_id?:   string
   action:       string
   entity_type:  string
-  entity_id?:   string
+  entity_id:    string
   actor_id?:    string
   before_data?: Record<string, unknown>
   after_data?:  Record<string, unknown>

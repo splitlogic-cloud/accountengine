@@ -16,7 +16,7 @@ export default async function EntryDetailPage({ params }: Props) {
   if (!user) redirect('/login')
 
   const result = await getEntry(entryId, companyId)
-  if (!result.ok) redirect(`/company/${companyId}/ledger`)
+  if (!result.ok) redirect(`/${companyId}/ledger`)
 
   const entry = result.value
 
@@ -29,7 +29,7 @@ export default async function EntryDetailPage({ params }: Props) {
     <div className="p-6 max-w-3xl">
       <div className="mb-4">
         <Link
-          href={`/company/${companyId}/ledger`}
+          href={`/${companyId}/ledger`}
           className="text-[12px] text-[#64748b] hover:text-[#0f172a] flex items-center gap-1 mb-3"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M8 10L4 6l4-4"/></svg>

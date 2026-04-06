@@ -1,5 +1,6 @@
-﻿node_modules
+node_modules
 .next/
+_zip_extract/
 .env.local
 .env.*.local
 *.tsbuildinfo

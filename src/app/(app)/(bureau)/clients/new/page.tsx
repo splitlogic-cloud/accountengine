@@ -44,7 +44,7 @@ export default function NewClientPage() {
     }
 
     const { company_id } = await res.json()
-    router.push(`/company/${company_id}/voucher`)
+    router.push(`/${company_id}/voucher`)
   }
 
   return (

@@ -93,7 +93,7 @@ export function validateEntryLines(
     ))
   }
 
-  return ok({ debit, credit, diff, balanced })
+  return ok<EntryBalance, JournalError>({ debit, credit, diff, balanced })
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ export async function createDraftEntry(
     return err(new JournalError(`Failed to create draft: ${rpcError.message}`, 'DB_ERROR', { pg_error: rpcError.message }))
   }
 
-  return ok(data as JournalEntry)
+  return ok<JournalEntry, JournalError>(data as JournalEntry)
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ export async function postEntry(
     },
   })
 
-  return ok({
+  return ok<PostedEntryResult, JournalError>({
     id:           posted.id,
     entry_number: posted.entry_number,
     entry_date:   posted.entry_date,
@@ -337,7 +337,9 @@ export async function getEntry(
     return err(new JournalError(`Entry ${entryId} not found.`, 'NOT_FOUND'))
   }
 
-  return ok(data as JournalEntry & { lines: JournalLine[] })
+  return ok<JournalEntry & { lines: JournalLine[] }, JournalError>(
+    data as JournalEntry & { lines: JournalLine[] },
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +398,7 @@ export async function listEntries(
   const total      = count ?? 0
   const totalPages = Math.ceil(total / page_size)
 
-  return ok({
+  return ok<ListEntriesResult, JournalError>({
     entries:     (data ?? []) as JournalEntry[],
     total,
     page,

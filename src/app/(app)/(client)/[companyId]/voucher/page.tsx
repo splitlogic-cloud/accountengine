@@ -22,7 +22,7 @@ export default async function VoucherPage({ params }: Props) {
     .single()
 
   if (!member || member.role === 'reader') {
-    redirect(`/company/${companyId}`)
+    redirect(`/${companyId}`)
   }
 
   // Fetch company
