@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 
+const inter = Inter({ subsets: ['latin'] })
+
 export const metadata: Metadata = {
-  title: 'AccountEngine',
-  description: 'Byråportal för ekonomi',
+  title:       'AccountEngine',
+  description: 'Bokföringssystem för svenska byråer och bolag',
 }
 
 export default function RootLayout({
@@ -12,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="sv">
-      <body className="antialiased text-[#1a1916] bg-[#f5f4f0]">
+    <html lang="sv" suppressHydrationWarning>
+      <body className={inter.className}>
         {children}
       </body>
     </html>

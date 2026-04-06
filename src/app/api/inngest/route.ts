@@ -1,12 +1,27 @@
-import { serve } from 'inngest/next'
-import { inngest } from '@/lib/inngest/client'
-import { syncCompanyFn } from '@/lib/inngest/functions/sync-company'
-import { syncWatchdogFn } from '@/lib/inngest/functions/watchdog'
+import { serve }   from 'inngest/next'
+import { inngest }  from '@/lib/inngest/client'
+
+// Import all functions so they are registered
+import { syncCompanyFn, createBatchesFn }           from '@/lib/inngest/functions/sync-company'
+import {
+  fetchECBRatesFn,
+  bureauNightlySyncFn,
+  bureauSyncAllFn,
+  reminderSchedulerFn,
+  vatDueNotifierFn,
+}                                                    from '@/lib/inngest/functions/background-jobs'
 
 export const { GET, POST, PUT } = serve({
-  client: inngest,
+  client:    inngest,
   functions: [
+    // Import pipeline
     syncCompanyFn,
-    syncWatchdogFn,
+    createBatchesFn,
+    // Background jobs
+    fetchECBRatesFn,
+    bureauNightlySyncFn,
+    bureauSyncAllFn,
+    reminderSchedulerFn,
+    vatDueNotifierFn,
   ],
 })

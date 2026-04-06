@@ -1,20 +1,26 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import 'server-only'
 
-export async function createClient() {
-  const cookieStore = await cookies()
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies }            from 'next/headers'
+
+export function createUserClient() {
+  const cookieStore = cookies()
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return cookieStore.getAll() },
+        getAll() {
+          return cookieStore.then(store => store.getAll())
+        },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookieStore.then(store => {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                store.set(name, value, options)
+              )
+            })
           } catch {}
         },
       },
@@ -22,10 +28,19 @@ export async function createClient() {
   )
 }
 
-// Service role — bypasses RLS, only use in API routes
 export function createServiceClient() {
-  return createSupabaseClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return [] },
+        setAll() {},
+      },
+      auth: {
+        autoRefreshToken: false,
+        persistSession:   false,
+      },
+    }
   )
 }

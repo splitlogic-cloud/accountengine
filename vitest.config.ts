@@ -1,16 +1,26 @@
 import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
+import path             from 'path'
 
 export default defineConfig({
   test: {
     environment: 'node',
-    globals: true,
-    server: { deps: { inline: ['server-only'] } }
+    globals:     true,
+    coverage: {
+      provider:   'v8',
+      reporter:   ['text', 'html', 'lcov'],
+      include:    ['src/lib/**/*.ts'],
+      exclude:    ['src/lib/supabase/**', 'src/lib/inngest/client.ts'],
+      thresholds: {
+        lines:      80,
+        functions:  80,
+        branches:   75,
+        statements: 80,
+      },
+    },
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      'server-only': resolve(__dirname, './src/__mocks__/server-only.ts'),
+      '@': path.resolve(__dirname, './src'),
     },
   },
 })

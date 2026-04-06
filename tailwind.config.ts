@@ -7,8 +7,22 @@ const config: Config = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      colors: {
+        brand: {
+          DEFAULT: '#1a7a3c',
+          light:   '#e8f5ee',
+          border:  '#b8ddc9',
+          dark:    '#155c2d',
+        },
+      },
+    },
   },
   plugins: [],
 }
+
 export default config

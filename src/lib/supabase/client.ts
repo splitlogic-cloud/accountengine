@@ -1,9 +1,9 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-const BUILD_PLACEHOLDER_URL = 'http://127.0.0.1:54321'
-const BUILD_PLACEHOLDER_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
-
+// ---------------------------------------------------------------------------
+// Browser client — used in Client Components only.
+// RLS enforced. Never has service role access.
+// ---------------------------------------------------------------------------
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -14,5 +14,9 @@ export function createClient() {
     )
   }
 
-  return createBrowserClient(url ?? BUILD_PLACEHOLDER_URL, key ?? BUILD_PLACEHOLDER_KEY)
+  const fallbackUrl = 'http://127.0.0.1:54321'
+  const fallbackKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+
+  return createBrowserClient(url ?? fallbackUrl, key ?? fallbackKey)
 }
