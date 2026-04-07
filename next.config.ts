@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',  // for SIE4 and bank file uploads

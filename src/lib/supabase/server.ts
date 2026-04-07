@@ -1,10 +1,13 @@
 import 'server-only'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies }            from 'next/headers'
 
 export function createUserClient() {
-  const cookieStore = cookies()
+  const cookieStore = cookies() as unknown as {
+    getAll: () => Array<{ name: string; value: string }>
+    set: (name: string, value: string, options?: Record<string, unknown>) => void
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,15 +15,13 @@ export function createUserClient() {
     {
       cookies: {
         getAll() {
-          return cookieStore.then(store => store.getAll())
+          return cookieStore.getAll()
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
           try {
-            cookieStore.then(store => {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                store.set(name, value, options)
-              )
-            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
           } catch {}
         },
       },

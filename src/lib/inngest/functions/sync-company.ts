@@ -252,6 +252,7 @@ export const syncCompanyFn = inngest.createFunction(
     await step.run('write-audit', async () => {
       await writeAudit({
         company_id,
+        bureau_id,
         action:      AuditAction.IMPORT_COMPLETED,
         entity_type: 'import',
         entity_id:   importId,

@@ -2,14 +2,9 @@ import 'server-only'
 
 import { createServiceClient } from '@/lib/supabase/server'
 
-export const AuditAction = {
-  IMPORT_COMPLETED: 'import_completed',
-} as const
-
-export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction]
-
 interface AuditParams {
   company_id:   string
+  bureau_id?:   string
   action:       string
   entity_type:  string
   entity_id:    string
@@ -23,6 +18,7 @@ export async function writeAudit(params: AuditParams): Promise<void> {
     const supabase = createServiceClient()
     await supabase.from('audit_log').insert({
       company_id:  params.company_id,
+      bureau_id:   params.bureau_id ?? null,
       action:      params.action,
       entity_type: params.entity_type,
       entity_id:   params.entity_id,
@@ -33,4 +29,8 @@ export async function writeAudit(params: AuditParams): Promise<void> {
   } catch (e) {
     console.error('[audit] Failed to write audit log:', e)
   }
+}
+
+export enum AuditAction {
+  IMPORT_COMPLETED = 'import_completed',
 }

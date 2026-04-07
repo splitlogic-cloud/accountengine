@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient }        from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
@@ -32,10 +32,8 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname === '/' ||
     pathname.startsWith('/login') ||
-    pathname.startsWith('/callback') ||
     pathname.startsWith('/auth/callback') ||
-    pathname.startsWith('/api/health') ||
-    pathname.startsWith('/api/auth/')
+    pathname.startsWith('/api/health')
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()

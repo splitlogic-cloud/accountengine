@@ -82,6 +82,9 @@ const icons = {
   reskontra:  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><path d="M2 4h12M2 8h8M2 12h5"/></svg>,
   vat:        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><path d="M2 12L6 4l4 8M4 9h4"/></svg>,
   reports:    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><path d="M2 12V5l3.5 3.5L9 5l3.5 3.5V12"/></svg>,
+  integrations: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.5 1.5M10.5 10.5L12 12M4 12l1.5-1.5M10.5 5.5L12 4"/></svg>,
+  import_:    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg>,
+  oss:        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><circle cx="8" cy="8" r="6"/><path d="M4 8h8M8 2c-1.5 2-2 4-2 6s.5 4 2 6"/></svg>,
   rules:      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><path d="M3 4h10M5 8h6M7 12h2"/></svg>,
   settings:   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><circle cx="8" cy="8" r="2.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14"/></svg>,
   back:       <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="w-3 h-3"><path d="M7 9L4 5.5 7 2"/></svg>,
@@ -158,6 +161,10 @@ export function Sidebar({ profile }: SidebarProps) {
             <Divider />
             <NavItem href={c('/vat')}        icon={icons.vat}       label="Moms" />
             <NavItem href={c('/reports')}    icon={icons.reports}   label="Rapporter" />
+            <NavItem href={c('/import')}        icon={icons.import_}      label="Importera" />
+            <NavItem href={c('/oss')}           icon={icons.oss}          label="OSS-rapport" />
+            <Divider />
+            <NavItem href={c('/integrations')} icon={icons.integrations} label="Integrationer" />
           </>
         )}
       </nav>

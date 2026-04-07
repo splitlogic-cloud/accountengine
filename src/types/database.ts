@@ -649,7 +649,7 @@ export type Result<T, E = Error> =
   | { ok: true;  value: T }
   | { ok: false; error: E }
 
-export function ok<T, E extends Error = Error>(value: T): Result<T, E> {
+export function ok<T, E = Error>(value: T): Result<T, E> {
   return { ok: true, value }
 }
 

@@ -74,6 +74,20 @@ export async function normalizeTransactions(
   return results
 }
 
+// Backwards-compatible helper used by webhook route.
+export function normalizeStripeTransaction(
+  source: Record<string, unknown>,
+  type: 'charge' | 'refund' | 'payout' | 'fee' = 'charge',
+): { transaction_type: string; source_id: string } | null {
+  const sourceId = typeof source.id === 'string' ? source.id : null
+  if (!sourceId) return null
+
+  return {
+    transaction_type: type,
+    source_id: sourceId,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // normalizeBalanceTx
 // Maps a single Stripe BalanceTransaction to our internal format.
@@ -162,11 +176,6 @@ async function normalizeBalanceTx(
     case 'adjustment':
     case 'transfer':
     default: {
-      if ((bTx.type as string) === 'dispute') {
-        txType      = 'chargeback'
-        description = `Tvist (chargeback) ${bTx.id}`
-        break
-      }
       txType = 'adjustment'
       break
     }
